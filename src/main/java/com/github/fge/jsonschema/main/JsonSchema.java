@@ -22,9 +22,7 @@ package com.github.fge.jsonschema.main;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.github.fge.jsonschema.core.exceptions.ProcessingException;
 import com.github.fge.jsonschema.core.processing.ProcessingResult;
-import com.github.fge.jsonschema.core.processing.Processor;
 import com.github.fge.jsonschema.core.report.ListProcessingReport;
-import com.github.fge.jsonschema.core.report.MessageProvider;
 import com.github.fge.jsonschema.core.report.ProcessingReport;
 import com.github.fge.jsonschema.core.report.ReportProvider;
 import com.github.fge.jsonschema.core.tree.SchemaTree;
@@ -32,6 +30,10 @@ import com.github.fge.jsonschema.core.tree.SimpleJsonTree;
 import com.github.fge.jsonschema.processors.data.FullData;
 import com.github.fge.jsonschema.processors.validation.ValidationProcessor;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Iterator;
+import java.util.List;
 import javax.annotation.concurrent.Immutable;
 
 /**
@@ -142,8 +144,8 @@ public final class JsonSchema
      * thrown during processing)
      *
      *
-     * @see ProcessingResult#uncheckedResult(Processor, ProcessingReport,
-     * MessageProvider)
+     * @see ProcessingResult#uncheckedResult(com.github.fge.jsonschema.core.processing.Processor, ProcessingReport,
+     * com.github.fge.jsonschema.core.report.MessageProvider)
      * @see JsonValidator#validate(JsonNode, JsonNode, boolean)
      *
      * @since 2.1.8
@@ -195,5 +197,147 @@ public final class JsonSchema
     public boolean validInstanceUnchecked(final JsonNode instance)
     {
         return doValidateUnchecked(instance, false).isSuccess();
+    }
+
+    /**
+     * Method to retrieve all JSON Schema property names.
+     *
+     * @return An iterator with all property names
+     */
+    public Iterator<String> getPropertyNames() {
+        return getProperties().fieldNames();
+    }
+
+    /**
+     * Method to retrieve a JSON Schema attribute enum values.
+     * If no matching attribute is found, returns null.
+     *
+     * @param name Name of attribute to look for
+     *
+     * @return List of the enum values of the attribute, if is enum type; empty if it is not
+     */
+
+    public List<String> getPropertyEnum(final String name) {
+        final JsonNode node = getProperty(name);
+        if (node != null) {
+            return getElementsAsText(node.get("enum"));
+        }
+        return Collections.emptyList();
+    }
+
+    /**
+     * Method to retrieve a JSON Schema property type.
+     * If no matching attribute is found, returns null.
+     *
+     * @param name Name of property to look for
+     *
+     * @return a JSON Schema property type as text
+     */
+
+    public String getPropertyType(final String name) {
+        return getPropertyElementAsText(name, "type");
+    }
+
+    /**
+     * Method to retrieve a JSON Schema property description.
+     * If no matching attribute is found, returns null.
+     *
+     * @param name Name of property to look for
+     *
+     * @return a JSON Schema property description as text
+     */
+
+    public String getPropertyDescription(final String name) {
+        return getPropertyElementAsText(name, "description");
+    }
+
+    /**
+     * Method for checking if a JSON Schema attribute with specified name is required.
+     * If no matching attribute is found, returns null.
+     *
+     * @param name Name of attribute to look for
+     *
+     * @return true if it is required, false if not
+     */
+    public boolean isRequired(final String name) {
+        final JsonNode requiredNode = schema.getNode().findValue("required");
+        if (requiredNode != null) {
+            final Iterator<JsonNode> it = requiredNode.elements();
+            while (it.hasNext()) {
+                if (name.equals(it.next().asText())) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    /*
+    /**********************************************************
+    /* Internal methods
+    /**********************************************************
+     */
+
+    /**
+     * Method to retrieve all JSON Schema attributes.
+     *
+     * @return Node of the attributes
+     */
+    private JsonNode getProperties() {
+        return schema.getNode().findValue("properties");
+    }
+
+    /**
+     * Method to finding a JSON Schema attribute with specified name and returning the node.
+     * If no matching attribute is found, returns null.
+     *
+     * @param name Name of attribute to look for
+     *
+     * @return Node of the attribute, if any; null if none
+     */
+    private JsonNode getProperty(final String name) {
+        return getProperties().get(name);
+    }
+
+    /**
+     * Method to retrieve a JSON Schema property element as text.
+     * If no matching attribute is found, returns null.
+     *
+     * @param name Name of property to look for
+     * @param element Name of the element of the property
+     *
+     * @return a JSON Schema property element as text; null if it is not exist
+     */
+
+    private String getPropertyElementAsText(final String name, String element) {
+        final JsonNode node = getProperty(name);
+        if (node == null) {
+            return null;
+        }
+        final JsonNode nodeElement = node.get(element);
+        if (nodeElement == null) {
+            return null;
+        }
+        return nodeElement.asText();
+    }
+
+    /**
+     * Method to retrieve a JsonNode elements as text.
+     *
+     * @param node Node to look for
+     *
+     * @return List of the elements of the node
+     */
+
+    private List<String> getElementsAsText(final JsonNode node) {
+        if (node == null) {
+            return Collections.emptyList();
+        }
+        final List nodeNames = new ArrayList<String>();
+        final Iterator<JsonNode> it = node.elements();
+        while (it.hasNext()) {
+            nodeNames.add(it.next().asText());
+        }
+        return nodeNames;
     }
 }
